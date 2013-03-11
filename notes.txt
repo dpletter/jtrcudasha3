@@ -16,6 +16,16 @@ cuda_cryptsha3_fmt.o: cuda_cryptsha3.o cuda_cryptsha3_fmt.c
 
 4. Add cuda_cryptsha3.h in top level and cuda_c and cryptsha3.cu under cuda/
 
+5. There are also sections of 
+"#ifdef HAVE_CUDA"
+these require patching
+there are multiple in each of these files
+john.c:#ifdef HAVE_CUDA
+options.c:#if defined(HAVE_CUDA)
+options.h:#elif defined(HAVE_CUDA)
+
+options.c and options.h are actually fine, we have to add the format file/module into john.c, done
+
 TODO:
 
 Create patch file for Makefile

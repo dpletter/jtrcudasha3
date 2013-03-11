@@ -1,0 +1,18 @@
+--- /home/free/tools/john-1.7.9-jumbo-7/src/john.c	2013-03-02 03:38:59.812375082 -0800
++++ john.c	2013-03-11 11:24:50.395357053 -0700
+@@ -159,6 +159,7 @@
+ extern struct fmt_main fmt_opencl_pwsafe;
+ #endif
+ #ifdef HAVE_CUDA
++extern struct fmt_main fmt_cuda_cryptsha3;
+ extern struct fmt_main fmt_cuda_cryptmd5;
+ extern struct fmt_main fmt_cuda_phpass;
+ extern struct fmt_main fmt_cuda_cryptsha256;
+@@ -319,6 +320,7 @@
+ #endif
+ 
+ #ifdef HAVE_CUDA
++	john_register_one(&fmt_cuda_cryptsha3);
+ 	john_register_one(&fmt_cuda_cryptmd5);
+ 	john_register_one(&fmt_cuda_phpass);
+ 	john_register_one(&fmt_cuda_cryptsha256);
