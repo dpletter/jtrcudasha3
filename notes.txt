@@ -16,4 +16,10 @@ cuda_cryptsha3_fmt.o: cuda_cryptsha3.o cuda_cryptsha3_fmt.c
 
 4. Add cuda_cryptsha3.h in top level and cuda_c and cryptsha3.cu under cuda/
 
+TODO:
 
+Create patch file for Makefile
+
+Create header file for sha3
+Create format file for sha3
+Create cuda file for sha3
