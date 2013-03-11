@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/types.h>
 #include "common.h"
 
 #define uint32_t unsigned int
@@ -23,7 +24,7 @@
 typedef struct {
 	uint32_t hash[4];	//hash that we are looking for
 	uint8_t length;   //salt length
-	char salt[8];
+	char salt[8];  //we don't really know the salt/salt prefix
 	char prefix;		// 'a' when $apr1$ or '1' when $1$
 } crypt_sha3_salt;
 
@@ -40,13 +41,59 @@ typedef struct __attribute__((__aligned__(4))){
 	uint8_t buffer[64];
 } sha3_ctx ;
 
-static const char sha3_salt_prefix[] = "$1$";
+static const char sha3_salt_prefix[] = "$sha3$";
 //bellow is md5 prefix, I don't know any defined prefix for sha3 salts
 //static const char apr1_salt_prefix[] = "$apr1$";
 
 
-/* PUT SHA3 ROTATION/BIT MACROS BELOW HERE */
+/********* Sha3 Rotation/Bit Macros  ***********/
 
-/* PUT SHA3 CONSTANTS BELOW HERE */
+/**
+ * Returns the index of Keccak state word state[x][y] for evaluation eval.
+ */
+#define index(x,y) (((y)*5+(x))*NT+eval)
+
+/**
+ * Pack two 32-bit words a and b into a 64-bit long word x, with a in the most
+ * significant position and b in the least significant position, then reverse
+ * the byte order of x.
+ */
+#define packAndReverseBytes(x,a,b) \
+	x = (((u_int64_t) b) << 32) | ((u_int64_t) a); \
+	x = ((x & 0x0000FFFF0000FFFF) << 16) | ((x & 0xFFFF0000FFFF0000) >> 16); \
+	x = ((x & 0x00FF00FF00FF00FF) <<  8) | ((x & 0xFF00FF00FF00FF00) >>  8)
+
+/**
+ * Reverse the byte order of 64-bit long word x, then unpack x into two 32-bit
+ * words a and b, with a in the most significant position and b in the least
+ * significant position.
+ */
+#define reverseBytesAndUnpack(x,a,b) \
+	x = ((x & 0x00FF00FF00FF00FF) <<  8) | ((x & 0xFF00FF00FF00FF00) >>  8); \
+	x = ((x & 0x0000FFFF0000FFFF) << 16) | ((x & 0xFFFF0000FFFF0000) >> 16); \
+	b = (u_int32_t) (x >> 32); \
+	a = (u_int32_t) x
+
+/**
+ * Returns x rotated y positions upwards.
+ */
+#define ROT(x,y) \
+	(((x) << (y)) | ((x) >> (64 - (y))))
+
+/**
+ * Returns the next state for LFSR with state x.
+ */
+#define NEXT_STATE(x) \
+	((x & 0x80) ? ((x << 1) ^ 0x171) : (x << 1))
+
+/******************************************************/
+
+/*********************** Sha3 Constants ***************/
+
+#define NT 64
+#define IB 256
+#define OB 256
+#define IW ((IB + 31)/32)
+#define OW ((OB + 31)/32)
 
 #endif
