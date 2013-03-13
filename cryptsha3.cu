@@ -41,6 +41,8 @@ __device__ void keccakBlockPermutation (u_int32_t eval)
 
 	// Get pointer to cryptoState for this evaluation.
 	u_int32_t *input = &cryptoState[eval][0];
+	
+	u_int64_t tmp = 0;
 
 
 	packAndReverseBytes (tmp, input[7], input[6]);
