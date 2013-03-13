@@ -16,6 +16,8 @@
 #define uint8_t unsigned char
 
 #define BLOCKS			28*3
+
+// NOTE: the definition NT at the bottom of this file defines the number of threads used in this implementation, this seems to be a duplicate
 #define THREADS 		256
 #define KEYS_PER_CRYPT		BLOCKS*THREADS
 #define PLAINTEXT_LENGTH	15

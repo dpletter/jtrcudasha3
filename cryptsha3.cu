@@ -8,7 +8,7 @@
 #include "cuda_cryptsha3.h"
 
 /**
- * cryptoState
+ * cryptoState stores all of the input words, padded using the padding function
  */
 
 __shared__ u_int32_t cryptoState[NT][OW];
@@ -18,50 +18,16 @@ __shared__ u_int32_t cryptoState[NT][OW];
  */
 __shared__ u_int64_t state[5*5*NT];
 
-__global__ void keccakEntry (u_int32_t *devInput, u_int32_t *devOutput, u_int32_t trial, u_int32_t L)
+// TODO: Add cuda_init method that will allocate device memory and call the kernel
+
+// This is our padding function that pads with binary digits in the pattern 1(0)*1 until the input is 256 bits
+__device__ void padInputWord (u_int32_t eval)
 {
-	u_int32_t sample, eval;
+	// Pointer to cryptoState word that we need to pad
+	u_int32_t *input = &cryptoState[eval][0];
 
-// Sample number
-	sample = blockIdx.y;  
-	sample *= gridDim.x;
-	sample += blockIdx.x;
-	sample *= blockDim.x;
-	sample += threadIdx.x;
-
-	// Proceed only if sample number is in bounds.
-	// This is our boundary check
-	if (sample < L)
-	{
-		// Evaluation number within block
-		eval = sample % NT; 
-
-		// Read input from devInput
-		// We are reading from dictionaries rather than generating random strings
-		cryptoState[eval] = &devInput[sample];
-
-	// Set Keccak state to 0 xor message block. Message block = input message
-	// (32 bytes) plus padding of 10...01 (104 bytes), total = 136 bytes = 1088
-	// bits. Little-endian byte orderin.
-
-	// memset is way cleaner??
-		for (y = 0; y < 5; ++ y)
-for (x = 0; x < 5; ++ x)
-state[index(x,y)] = 0;
-
-// Compute crypto function.
-// Do we even need to pass in the word here? 
-
-		// xor in new state with first word in wordlen
-		// for (int ctr = 0; ctr < wordlen; ctr++) 
-		// is this index calculation correct?
-keccakBlockPermutation (state[eval]);
-
-
-
-	}
+	// TODO: complete padding function
 }
-
 
 __device__ void keccakBlockPermutation (u_int32_t eval)
 {
@@ -78,13 +44,13 @@ __device__ void keccakBlockPermutation (u_int32_t eval)
 
 
 	packAndReverseBytes (tmp, input[7], input[6]);
-state[index(0,0)] = tmp;
+	state[index(0,0)] = tmp;
 	packAndReverseBytes (tmp, input[5], input[4]);
-state[index(1,0)] = tmp;
+	state[index(1,0)] = tmp;
 	packAndReverseBytes (tmp, input[3], input[2]);
-state[index(2,0)] = tmp;
+	state[index(2,0)] = tmp;
 	packAndReverseBytes (tmp, input[1], input[0]);
-state[index(3,0)] = tmp;
+	state[index(3,0)] = tmp;
 
 	// Apply 24-round permutation.
 	for (round = 0; round < 24; ++ round)
@@ -93,13 +59,15 @@ state[index(3,0)] = tmp;
 		for (x = 0; x <= 4; ++ x)
 		{
 			C[x] = state[index(x,0)];
-			for (y = 1; y <= 4; ++ y) C[x] ^= state[index(x,y)];
+			for (y = 1; y <= 4; ++ y) 
+				C[x] ^= state[index(x,y)];
 		}
 		for (x = 0; x <= 4; ++ x)
 		{
 			D = C[(x+4)%5] ^ ROT (C[(x+1)%5], 1);
-			for (y = 0; y <= 4; ++ y) state[index(x,y)] ^= D;
-			}
+			for (y = 0; y <= 4; ++ y)
+			 	state[index(x,y)] ^= D;
+		}
 
 		// Rho step.
 		// state[index(0,0)] = state[index(0,0)];
@@ -158,37 +126,82 @@ state[index(3,0)] = tmp;
 
 		// Chi step.
 		for (y = 0; y <= 4; ++ y)
-			{
+		{
 			for (x = 0; x <= 4; ++ x)
 				C[x] = state[index(x,y)] ^ ((~state[index((x+1)%5,y)]) &
 					state[index((x+2)%5,y)]);
 			for (x = 0; x <= 4; ++ x)
 				state[index(x,y)] = C[x];
-			}
+		}
 
 		// Iota step.
 		for (x = 0; x <= 6; ++ x)
-			{
+		{
 			state[index(0,0)] ^= (LFSR & 1ULL) << ((1 << x) - 1);
 			LFSR = NEXT_STATE (LFSR);
-			}
 		}
-
 	}
 
-
 	// Flip bytes back to Big-endian 32-bit words and put them into input
-tmp = state[index(0,0)];
-reverseBytesAndUnpack (tmp, input[7], input[6]);
-tmp = state[index(1,0)];
-reverseBytesAndUnpack (tmp, input[5], input[4]);
-tmp = state[index(2,0)];
-reverseBytesAndUnpack (tmp, input[3], input[2]);
-tmp = state[index(3,0)];
-reverseBytesAndUnpack (tmp, input[1], input[0]);
+	tmp = state[index(0,0)];
+	reverseBytesAndUnpack (tmp, input[7], input[6]);
+	tmp = state[index(1,0)];
+	reverseBytesAndUnpack (tmp, input[5], input[4]);
+	tmp = state[index(2,0)];
+	reverseBytesAndUnpack (tmp, input[3], input[2]);
+	tmp = state[index(3,0)];
+	reverseBytesAndUnpack (tmp, input[1], input[0]);
 
-
-	// Store output.
-	for (int i = 0; i < OW; ++ i)
-		devOutput[sample*OW + i] = cryptoState[eval][i];
 }
+
+__global__ void keccakEntry (u_int32_t *devInput, u_int32_t *devOutput, u_int32_t trial, u_int32_t L)
+{
+	u_int32_t sample, eval;
+
+	// Sample number
+	sample = blockIdx.y;  
+	sample *= gridDim.x;
+	sample += blockIdx.x;
+	sample *= blockDim.x;
+	sample += threadIdx.x;
+
+	// Proceed only if sample number is in bounds.
+	// This is our boundary check
+	if (sample < L)
+	{
+		// Evaluation number within block
+		eval = sample % NT; 
+
+		// Read input from devInput
+		// We are reading from dictionaries rather than generating random strings
+		cryptoState[eval] = &devInput[sample];
+
+		// Use the padding function to pad the input to make it 256 bits
+		padInputWord (eval);
+
+		// Set Keccak state to 0 xor message block. Message block = input message
+		// (32 bytes) plus padding of 10...01 (104 bytes), total = 136 bytes = 1088
+		// bits. Little-endian byte orderin.
+
+		// memset is way cleaner??
+		for (y = 0; y < 5; ++ y)
+			for (x = 0; x < 5; ++ x)
+				state[index(x,y)] = 0;
+
+		// Compute crypto function.
+		// Do we even need to pass in the word here? 
+
+		// xor in new state with first word in wordlen
+		// for (int ctr = 0; ctr < wordlen; ctr++) 
+		// is this index calculation correct?
+		keccakBlockPermutation (eval);
+
+			// Store output.
+		for (int i = 0; i < OW; ++ i)
+			devOutput[sample*OW + i] = cryptoState[eval][i];
+
+
+	}
+}
+
+
