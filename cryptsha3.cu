@@ -44,8 +44,6 @@ __device__ void keccakBlockPermutation (u_int32_t eval)
 	
 	u_int64_t tmp = 0;
 
-	u_int32_t tmp = 0;
-
 
 	packAndReverseBytes (tmp, input[7], input[6]);
 	state[index(0,0)] = tmp;
