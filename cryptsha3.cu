@@ -5,7 +5,7 @@
 */
 
 //All the macros and constants
-#include "cuda_cryptsha3.h"
+#include "../cuda_cryptsha3.h"
 
 /**
  * cryptoState stores all of the input words, padded using the padding function
@@ -41,6 +41,8 @@ __device__ void keccakBlockPermutation (u_int32_t eval)
 
 	// Get pointer to cryptoState for this evaluation.
 	u_int32_t *input = &cryptoState[eval][0];
+
+	u_int32_t tmp = 0;
 
 
 	packAndReverseBytes (tmp, input[7], input[6]);
@@ -202,6 +204,28 @@ __global__ void keccakEntry (u_int32_t *devInput, u_int32_t *devOutput, u_int32_
 
 
 	}
+}
+
+__host__ void sha3_crypt_gpu (crypt_sha3_password *inBuffer, crypt_sha3_crack *outBuffer, crypt_sha3_salt *host_salt)
+{
+	HANDLE_ERROR(cudaMemcpyToSymbol(cuda_salt, host_salt, sizeof(crypt_sha3_salt)));
+
+	crypt_sha3_password *dev_inBuffer;
+	crypt_sha3_crack *dev_outBuffer;
+
+	size_t inSize = sizeof(crypt_sha3_password) * KEYS_PER_CRYPT;
+	size_t outSize = sizeof(crypt_sha3_crack) * KEYS_PER_CRYPT;
+
+	HANDLE_ERROR(cudaMalloc(&dev_inBuffer, inSize));
+	HANDLE_ERROR(cudaMalloc(*dev_outBuffer, inSize));
+	HANDLE_ERROR(cudaMemcpy(dev_inBuffer, inBuffer, inSize, cudaMemcpyHostToDevice));
+
+	keccakEntry <<< , >>> (dev_inBuffer, dev_outBuffer, 0, 0);
+
+	HANDLE_ERROR(cudaMemcpy(outBuffer, dev_inBuffer, outSize, cudaMemcpyDeviceToHost));
+
+	HANDLE_ERROR(cudaFree(dev_inBuffer));
+	HANDLE_ERROR(cudaFree(dev_outBuffer));
 }
 
 
