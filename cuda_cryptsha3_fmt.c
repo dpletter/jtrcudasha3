@@ -26,7 +26,7 @@
 #define MIN_KEYS_PER_CRYPT	KEYS_PER_CRYPT
 #define MAX_KEYS_PER_CRYPT	KEYS_PER_CRYPT
 
-void sha3_crypt_gpu(crypt_sha3_password *, crypt_sha3_crack *, crypt_sha3_salt *);
+void sha3_crypt_gpu(crypt_sha3_password *, crypt_sha3_crack *, crypt_sha3_salt *, uint32_t);
 
 static crypt_sha3_password *inbuffer;			/** plaintext ciphertexts **/
 static crypt_sha3_crack *outbuffer;			/** cracked or no **/
