@@ -11,38 +11,48 @@
  * cryptoState stores all of the input words, padded using the padding function
  */
 
-__shared__ u_int32_t cryptoState[NT][OW];
+__shared__ uint32_t cryptoState[NT][OW];
 
 /*
  * Keccak state words.
  */
-__shared__ u_int64_t state[5*5*NT];
+__shared__ uint64_t state[5*5*NT];
 
-// TODO: Add cuda_init method that will allocate device memory and call the kernel
 
 // This is our padding function that pads with binary digits in the pattern 1(0)*1 until the input is 256 bits
-__device__ void padInputWord (u_int32_t eval)
+__device__ void padInputWord (uint32_t eval, uint32_t length)
 {
 	// Pointer to cryptoState word that we need to pad
-	u_int32_t *input = &cryptoState[eval][0];
+	uint8_t *input = &cryptoState[eval][0];
 
-	// TODO: complete padding function
+	// Start at the end of this word and fill until we hit 32 characters
+	uint32_t charIndex = length;
+
+	input[charIndex] = (1 << 7);
+
+	// Go until index 30 and then fill it with zeroes
+	while (charIndex < 31) 
+		input[charIndex] = 0;
+	
+	// fill index 31 with 1
+	input[charIndex] = 1;
+
 }
 
-__device__ void keccakBlockPermutation (u_int32_t eval)
+__device__ void keccakBlockPermutation (uint32_t eval)
 {
-	u_int32_t round, x, y;
+	uint32_t round, x, y;
 
 	// Temporary storage.
-	u_int64_t C[5], D;
+	uint64_t C[5], D;
 
 	// Linear feedback shift register for generating round constants.
-	u_int32_t LFSR = 1;
+	uint32_t LFSR = 1;
 
 	// Get pointer to cryptoState for this evaluation.
-	u_int32_t *input = &cryptoState[eval][0];
+	uint32_t *input = &cryptoState[eval][0];
 	
-	u_int64_t tmp = 0;
+	uint64_t tmp = 0;
 
 
 	packAndReverseBytes (tmp, input[7], input[6]);
@@ -156,9 +166,9 @@ __device__ void keccakBlockPermutation (u_int32_t eval)
 
 }
 
-__global__ void keccakEntry (u_int32_t *devInput, u_int32_t *devOutput, u_int32_t trial, u_int32_t L)
+__global__ void keccakEntry (crypt_sha3_password *devInput, crypt_sha3_crack *devOutput, uint32_t trial, uint32_t L)
 {
-	u_int32_t sample, eval;
+	uint32_t sample, eval;
 
 	// Sample number
 	sample = blockIdx.y;  
@@ -175,11 +185,10 @@ __global__ void keccakEntry (u_int32_t *devInput, u_int32_t *devOutput, u_int32_
 		eval = sample % NT; 
 
 		// Read input from devInput
-		// We are reading from dictionaries rather than generating random strings
-		cryptoState[eval] = &devInput[sample];
+		cryptoState[eval] = &devInput[sample].v;
 
 		// Use the padding function to pad the input to make it 256 bits
-		padInputWord (eval);
+		padInputWord (eval, devInput[sample].length);
 
 		// Set Keccak state to 0 xor message block. Message block = input message
 		// (32 bytes) plus padding of 10...01 (104 bytes), total = 136 bytes = 1088
@@ -206,7 +215,7 @@ __global__ void keccakEntry (u_int32_t *devInput, u_int32_t *devOutput, u_int32_
 	}
 }
 
-__host__ void sha3_crypt_gpu (crypt_sha3_password *inBuffer, crypt_sha3_crack *outBuffer, crypt_sha3_salt *host_salt)
+__host__ void sha3_crypt_gpu (crypt_sha3_password *inBuffer, crypt_sha3_crack *outBuffer, crypt_sha3_salt *host_salt, uint32_t L)
 {
 	HANDLE_ERROR(cudaMemcpyToSymbol(cuda_salt, host_salt, sizeof(crypt_sha3_salt)));
 
@@ -220,7 +229,8 @@ __host__ void sha3_crypt_gpu (crypt_sha3_password *inBuffer, crypt_sha3_crack *o
 	HANDLE_ERROR(cudaMalloc(*dev_outBuffer, inSize));
 	HANDLE_ERROR(cudaMemcpy(dev_inBuffer, inBuffer, inSize, cudaMemcpyHostToDevice));
 
-	keccakEntry <<< , >>> (dev_inBuffer, dev_outBuffer, 0, 0);
+	// Double check my math on this calculation of number of blocks
+	keccakEntry <<<((L + NT - 1) / NT) , NT>>> (dev_inBuffer, dev_outBuffer, 0, L);
 
 	HANDLE_ERROR(cudaMemcpy(outBuffer, dev_inBuffer, outSize, cudaMemcpyDeviceToHost));
 
