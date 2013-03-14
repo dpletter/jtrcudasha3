@@ -18,21 +18,25 @@ __shared__ uint32_t cryptoState[NT][OW];
  */
 __shared__ uint64_t state[5*5*NT];
 
+__global__ void testPadding (uint32_t *devInput, uint32_t *devOutput);
+__device__ void padInputWord (uint32_t eval, uint32_t length);
 
 // This is our padding function that pads with binary digits in the pattern 1(0)*1 until the input is 256 bits
+// length is the number of characters in the input string
 __device__ void padInputWord (uint32_t eval, uint32_t length)
 {
 	// Pointer to cryptoState word that we need to pad
-	uint8_t *input = &cryptoState[eval][0];
+ 	// NOTE: this is a uint8_t NOT a uint32_t
+	uint8_t *input = (uint8_t*) &cryptoState[eval][0];
 
 	// Start at the end of this word and fill until we hit 32 characters
 	uint32_t charIndex = length;
 
-	input[charIndex] = (1 << 7);
+	input[charIndex++] = (1 << 7);
 
 	// Go until index 30 and then fill it with zeroes
-	while (charIndex < 31) 
-		input[charIndex] = 0;
+	while (charIndex < 31)
+		input[charIndex++] = 0;
 	
 	// fill index 31 with 1
 	input[charIndex] = 1;
@@ -169,6 +173,8 @@ __device__ void keccakBlockPermutation (uint32_t eval)
 __global__ void keccakEntry (crypt_sha3_password *devInput, crypt_sha3_crack *devOutput, uint32_t trial, uint32_t L)
 {
 	uint32_t sample, eval;
+	uint32_t maxIndex = 0;
+	uint32_t temp = 0;
 
 	// Sample number
 	sample = blockIdx.y;  
@@ -184,8 +190,18 @@ __global__ void keccakEntry (crypt_sha3_password *devInput, crypt_sha3_crack *de
 		// Evaluation number within block
 		eval = sample % NT; 
 
-		// Read input from devInput
-		cryptoState[eval] = &devInput[sample].v;
+		// Calculate number of 4byte words in this string
+		maxIndex = (devInput[sample].length + 3) / 4;
+
+		// Copy input word by word
+		for (int i = 0; i < maxIndex; i++) {
+			// Copy each byte of the word into a temp variable
+			for (int j = 0; j < 4; j++) 
+				temp |= ( devInput[sample].v[(i * 4) + j] >> (8 * j) ) ;
+			
+			cryptoState[eval][i] = temp;
+			temp = 0;
+		}
 
 		// Use the padding function to pad the input to make it 256 bits
 		padInputWord (eval, devInput[sample].length);
