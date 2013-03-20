@@ -8,20 +8,31 @@
 #define _CUDA_CRYPTSHA3_H
 #include <assert.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdbool.h>
 #include <sys/types.h>
-#include "common.h"
+#include <sys/stat.h>
+#include <unistd.h>
+//#include "common.h"
 
 #define uint32_t unsigned int
 #define uint8_t unsigned char
 
-#define BLOCKS			28*3
+/*********************** Sha3 Constants ***************/
 
-// NOTE: the definition NT at the bottom of this file defines the number of threads used in this implementation, this seems to be a duplicate
-#define THREADS 		256
-#define KEYS_PER_CRYPT		BLOCKS*THREADS
-#define PLAINTEXT_LENGTH	15
-//^ max plain length
+// This definition of NT might cause an overflow of shared memory, the original had 64 threads and 256 causes a compilation error
+#define NT 64
+
+#define IB 256
+#define OB 256
+#define IW ((IB + 31)/32)
+#define OW ((OB + 31)/32)
+
+#define X_BLOCKS 1024 
+#define Y_BLOCKS 1024
+#define BLOCKS X_BLOCKS*Y_BLOCKS
+#define KEYS_PER_CRYPT BLOCKS*NT
+#define PLAINTEXT_LENGTH 15
 
 typedef struct {
 	uint32_t hash[4];	//hash that we are looking for
@@ -36,7 +47,7 @@ typedef struct {
 } crypt_sha3_password;
 
 typedef struct {
-	  char cracked;
+	  uint8_t hash[OW * 4 + 1];
 } crypt_sha3_crack;
 
 typedef struct __attribute__((__aligned__(4))){
@@ -65,7 +76,7 @@ static const char sha3_salt_prefix[] = "$sha3$";
 #define packAndReverseBytes(x,a,b) \
 	x = (((u_int64_t) b) << 32) | ((u_int64_t) a); \
 	x = ((x & 0x0000FFFF0000FFFF) << 16) | ((x & 0xFFFF0000FFFF0000) >> 16); \
-	x = ((x & 0x00FF00FF00FF00FF) <<  8) | ((x & 0xFF00FF00FF00FF00) >>  8)
+	x = ((x & 0x00FF00FF00FF00FF) << 8) | ((x & 0xFF00FF00FF00FF00) >> 8)
 
 /**
  * Reverse the byte order of 64-bit long word x, then unpack x into two 32-bit
@@ -73,7 +84,7 @@ static const char sha3_salt_prefix[] = "$sha3$";
  * significant position.
  */
 #define reverseBytesAndUnpack(x,a,b) \
-	x = ((x & 0x00FF00FF00FF00FF) <<  8) | ((x & 0xFF00FF00FF00FF00) >>  8); \
+	x = ((x & 0x00FF00FF00FF00FF) << 8) | ((x & 0xFF00FF00FF00FF00) >> 8); \
 	x = ((x & 0x0000FFFF0000FFFF) << 16) | ((x & 0xFFFF0000FFFF0000) >> 16); \
 	b = (u_int32_t) (x >> 32); \
 	a = (u_int32_t) x
@@ -90,14 +101,5 @@ static const char sha3_salt_prefix[] = "$sha3$";
 #define NEXT_STATE(x) \
 	((x & 0x80) ? ((x << 1) ^ 0x171) : (x << 1))
 
-/******************************************************/
-
-/*********************** Sha3 Constants ***************/
-
-#define NT 64
-#define IB 256
-#define OB 256
-#define IW ((IB + 31)/32)
-#define OW ((OB + 31)/32)
 
 #endif

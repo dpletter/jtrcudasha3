@@ -21,6 +21,19 @@ __shared__ uint64_t state[5*5*NT];
 __global__ void testPadding (uint32_t *devInput, uint32_t *devOutput);
 __device__ void padInputWord (uint32_t eval, uint32_t length);
 
+static void HandleError( cudaError_t err,
+    const char *file,
+    int line ) {
+     if (err != cudaSuccess) {
+     printf( "%s in %s at line %d\n", cudaGetErrorString( err ),
+        file, line );
+     exit( EXIT_FAILURE );
+     }
+}
+
+#define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
+
+
 // This is our padding function that pads with binary digits in the pattern 1(0)*1 until the input is 256 bits
 // length is the number of characters in the input string
 __device__ void padInputWord (uint32_t eval, uint32_t length)
@@ -58,14 +71,13 @@ __device__ void keccakBlockPermutation (uint32_t eval)
 	
 	uint64_t tmp = 0;
 
-
-	packAndReverseBytes (tmp, input[7], input[6]);
+	packAndReverseBytes(tmp, input[7], input[6]);
 	state[index(0,0)] = tmp;
-	packAndReverseBytes (tmp, input[5], input[4]);
+	packAndReverseBytes(tmp, input[5], input[4]);
 	state[index(1,0)] = tmp;
-	packAndReverseBytes (tmp, input[3], input[2]);
+	packAndReverseBytes(tmp, input[3], input[2]);
 	state[index(2,0)] = tmp;
-	packAndReverseBytes (tmp, input[1], input[0]);
+	packAndReverseBytes(tmp, input[1], input[0]);
 	state[index(3,0)] = tmp;
 
 	// Apply 24-round permutation.
@@ -87,30 +99,30 @@ __device__ void keccakBlockPermutation (uint32_t eval)
 
 		// Rho step.
 		// state[index(0,0)] = state[index(0,0)];
-		state[index(1,0)] = ROT (state[index(1,0)],  1);
-		state[index(0,2)] = ROT (state[index(0,2)],  3);
-		state[index(2,1)] = ROT (state[index(2,1)],  6);
-		state[index(1,2)] = ROT (state[index(1,2)], 10);
-		state[index(2,3)] = ROT (state[index(2,3)], 15);
-		state[index(3,3)] = ROT (state[index(3,3)], 21);
-		state[index(3,0)] = ROT (state[index(3,0)], 28);
-		state[index(0,1)] = ROT (state[index(0,1)], 36);
-		state[index(1,3)] = ROT (state[index(1,3)], 45);
-		state[index(3,1)] = ROT (state[index(3,1)], 55);
-		state[index(1,4)] = ROT (state[index(1,4)],  2);
-		state[index(4,4)] = ROT (state[index(4,4)], 14);
-		state[index(4,0)] = ROT (state[index(4,0)], 27);
-		state[index(0,3)] = ROT (state[index(0,3)], 41);
-		state[index(3,4)] = ROT (state[index(3,4)], 56);
-		state[index(4,3)] = ROT (state[index(4,3)],  8);
-		state[index(3,2)] = ROT (state[index(3,2)], 25);
-		state[index(2,2)] = ROT (state[index(2,2)], 43);
-		state[index(2,0)] = ROT (state[index(2,0)], 62);
-		state[index(0,4)] = ROT (state[index(0,4)], 18);
-		state[index(4,2)] = ROT (state[index(4,2)], 39);
-		state[index(2,4)] = ROT (state[index(2,4)], 61);
-		state[index(4,1)] = ROT (state[index(4,1)], 20);
-		state[index(1,1)] = ROT (state[index(1,1)], 44);
+		state[index(1,0)] = ROT(state[index(1,0)], 1);
+		state[index(0,2)] = ROT(state[index(0,2)], 3);
+		state[index(2,1)] = ROT(state[index(2,1)], 6);
+		state[index(1,2)] = ROT(state[index(1,2)], 10);
+		state[index(2,3)] = ROT(state[index(2,3)], 15);
+		state[index(3,3)] = ROT(state[index(3,3)], 21);
+		state[index(3,0)] = ROT(state[index(3,0)], 28);
+		state[index(0,1)] = ROT(state[index(0,1)], 36);
+		state[index(1,3)] = ROT(state[index(1,3)], 45);
+		state[index(3,1)] = ROT(state[index(3,1)], 55);
+		state[index(1,4)] = ROT(state[index(1,4)], 2);
+		state[index(4,4)] = ROT(state[index(4,4)], 14);
+		state[index(4,0)] = ROT(state[index(4,0)], 27);
+		state[index(0,3)] = ROT(state[index(0,3)], 41);
+		state[index(3,4)] = ROT(state[index(3,4)], 56);
+		state[index(4,3)] = ROT(state[index(4,3)], 8);
+		state[index(3,2)] = ROT(state[index(3,2)], 25);
+		state[index(2,2)] = ROT(state[index(2,2)], 43);
+		state[index(2,0)] = ROT(state[index(2,0)], 62);
+		state[index(0,4)] = ROT(state[index(0,4)], 18);
+		state[index(4,2)] = ROT(state[index(4,2)], 39);
+		state[index(2,4)] = ROT(state[index(2,4)], 61);
+		state[index(4,1)] = ROT(state[index(4,1)], 20);
+		state[index(1,1)] = ROT(state[index(1,1)], 44);
 
 		// Pi step.
 		// state[index(0,0)] = state[index(0,0)];
@@ -160,24 +172,24 @@ __device__ void keccakBlockPermutation (uint32_t eval)
 
 	// Flip bytes back to Big-endian 32-bit words and put them into input
 	tmp = state[index(0,0)];
-	reverseBytesAndUnpack (tmp, input[7], input[6]);
+	reverseBytesAndUnpack(tmp, input[7], input[6]);
 	tmp = state[index(1,0)];
-	reverseBytesAndUnpack (tmp, input[5], input[4]);
+	reverseBytesAndUnpack(tmp, input[5], input[4]);
 	tmp = state[index(2,0)];
-	reverseBytesAndUnpack (tmp, input[3], input[2]);
+	reverseBytesAndUnpack(tmp, input[3], input[2]);
 	tmp = state[index(3,0)];
-	reverseBytesAndUnpack (tmp, input[1], input[0]);
+	reverseBytesAndUnpack(tmp, input[1], input[0]);
 
 }
 
-__global__ void keccakEntry (crypt_sha3_password *devInput, crypt_sha3_crack *devOutput, uint32_t trial, uint32_t L)
+__global__ void keccakEntry (crypt_sha3_password *devInput, crypt_sha3_crack *devOutput, uint32_t L)
 {
 	uint32_t sample, eval;
 	uint32_t maxIndex = 0;
 	uint32_t temp = 0;
 
 	// Sample number
-	sample = blockIdx.y;  
+	sample = blockIdx.y;
 	sample *= gridDim.x;
 	sample += blockIdx.x;
 	sample *= blockDim.x;
@@ -206,52 +218,128 @@ __global__ void keccakEntry (crypt_sha3_password *devInput, crypt_sha3_crack *de
 		// Use the padding function to pad the input to make it 256 bits
 		padInputWord (eval, devInput[sample].length);
 
+		for (int y = 0; y < 5; ++ y)
+			for (int x = 0; x < 5; ++ x)
+				state[index(x,y)] = 0;
+
 		// Set Keccak state to 0 xor message block. Message block = input message
 		// (32 bytes) plus padding of 10...01 (104 bytes), total = 136 bytes = 1088
 		// bits. Little-endian byte orderin.
-
-		// memset is way cleaner??
-		for (y = 0; y < 5; ++ y)
-			for (x = 0; x < 5; ++ x)
-				state[index(x,y)] = 0;
-
-		// Compute crypto function.
-		// Do we even need to pass in the word here? 
-
-		// xor in new state with first word in wordlen
-		// for (int ctr = 0; ctr < wordlen; ctr++) 
-		// is this index calculation correct?
 		keccakBlockPermutation (eval);
 
-			// Store output.
-		for (int i = 0; i < OW; ++ i)
-			devOutput[sample*OW + i] = cryptoState[eval][i];
+		// Store output.
+		for (int i = 0; i < OW; ++ i) {
 
+			devOutput[sample].hash[i * 4]     = 0xFF & (cryptoState[eval][i] >> 24);
+			// if (!threadIdx.x && !blockIdx.x && !blockIdx.y) 
+			// 	printf("%x",devOutput[sample].hash[i*4]);
 
+			devOutput[sample].hash[i * 4 + 1] = 0xFF & (cryptoState[eval][i] >> 16);
+			// if (!threadIdx.x && !blockIdx.x && !blockIdx.y) 
+			// 	printf("%x",devOutput[sample].hash[i*4+1]);
+
+			devOutput[sample].hash[i * 4 + 2] = 0xFF & (cryptoState[eval][i] >> 8);
+			// if (!threadIdx.x && !blockIdx.x && !blockIdx.y) 
+			// 	printf("%x",devOutput[sample].hash[i*4+2]);
+
+			devOutput[sample].hash[i * 4 + 3] = 0xFF & cryptoState[eval][i];
+			// if (!threadIdx.x && !blockIdx.x && !blockIdx.y) 
+			// 	printf("%x",devOutput[sample].hash[i*4+3]);
+
+		}
+		// if (!threadIdx.x && !blockIdx.x && !blockIdx.y)
+		// 	printf("\n");
 	}
 }
 
 __host__ void sha3_crypt_gpu (crypt_sha3_password *inBuffer, crypt_sha3_crack *outBuffer, crypt_sha3_salt *host_salt, uint32_t L)
 {
-	HANDLE_ERROR(cudaMemcpyToSymbol(cuda_salt, host_salt, sizeof(crypt_sha3_salt)));
+	//HANDLE_ERROR(cudaMemcpyToSymbol(cuda_salt, host_salt, sizeof(crypt_sha3_salt)));
 
 	crypt_sha3_password *dev_inBuffer;
 	crypt_sha3_crack *dev_outBuffer;
 
-	size_t inSize = sizeof(crypt_sha3_password) * KEYS_PER_CRYPT;
-	size_t outSize = sizeof(crypt_sha3_crack) * KEYS_PER_CRYPT;
+	size_t inSize = sizeof(crypt_sha3_password) * L;
+	size_t outSize = sizeof(crypt_sha3_crack) * L;
 
-	HANDLE_ERROR(cudaMalloc(&dev_inBuffer, inSize));
-	HANDLE_ERROR(cudaMalloc(*dev_outBuffer, inSize));
+	HANDLE_ERROR(cudaMalloc((void**)&dev_inBuffer, inSize));
+	HANDLE_ERROR(cudaMalloc((void**)&dev_outBuffer, outSize));
 	HANDLE_ERROR(cudaMemcpy(dev_inBuffer, inBuffer, inSize, cudaMemcpyHostToDevice));
 
-	// Double check my math on this calculation of number of blocks
-	keccakEntry <<<((L + NT - 1) / NT) , NT>>> (dev_inBuffer, dev_outBuffer, 0, L);
+	dim3 NB = dim3(X_BLOCKS, Y_BLOCKS);
+	keccakEntry <<<NB, NT>>> (dev_inBuffer, dev_outBuffer, L);
 
-	HANDLE_ERROR(cudaMemcpy(outBuffer, dev_inBuffer, outSize, cudaMemcpyDeviceToHost));
+	cudaDeviceSynchronize();
+
+	HANDLE_ERROR(cudaMemcpy(outBuffer, dev_outBuffer, outSize, cudaMemcpyDeviceToHost));
 
 	HANDLE_ERROR(cudaFree(dev_inBuffer));
 	HANDLE_ERROR(cudaFree(dev_outBuffer));
 }
+
+int main (int argc, char *argv[])
+{
+	// Read in the dictionary and pass it to the host function
+	int inBufferSize = 10000;
+	crypt_sha3_password *inBuffer = (crypt_sha3_password*) malloc(sizeof(crypt_sha3_password) * inBufferSize);
+	crypt_sha3_crack *outBuffer;
+	uint32_t L;
+	FILE *fp;
+	struct stat statsBuff;
+	int tempLen = 0, i;
+
+    if (argc != 2) {
+        fprintf(stderr, "Must specify the name of a dictionary file\n");
+        exit(1);
+    }
+
+	if ((fp = fopen(argv[1], "r")) == NULL) {
+		perror("error opening file");
+		exit(1);
+	}
+	if (stat(argv[1], &statsBuff) < 0) {
+		perror("error getting stats");
+		exit(1);
+	}
+
+	for (i = 0; (fgets((char*)inBuffer[i].v, statsBuff.st_size, fp) != NULL); i++) {
+		// If we are about to run over our size then allocate more space
+		if (i == inBufferSize) {
+			inBufferSize += 10000;
+			if ((inBuffer = (crypt_sha3_password*) realloc(inBuffer, sizeof(crypt_sha3_password) * inBufferSize)) == NULL) {
+				perror("unable to allocate more space");
+				exit(1);
+			}
+		}
+
+		tempLen = strlen((char*)inBuffer[i].v);
+		// If the last char is a newline then make it the null byte and subtract one from the length
+		if (inBuffer[i].v[tempLen - 1] == '\n')
+			inBuffer[i].v[--tempLen] = '\0';
+
+		inBuffer[i].length = tempLen;
+	} 
+
+	L = i;
+
+	printf("number of words in dict: %d\n", L);
+	outBuffer = (crypt_sha3_crack*) malloc(sizeof(crypt_sha3_crack) * L);
+
+	sha3_crypt_gpu(inBuffer, outBuffer, NULL, L);
+
+//	for (int j = 0; j < L; j++) {
+//        if (j % 10000 == 0) {
+//	 	    outBuffer[j].hash[OW*4] = '\0';
+//		    printf("Hash number %d: ", j);
+//		    for (int i = 0; i < OW*4; i++)
+//			    printf("%02x", outBuffer[j].hash[i]);
+//		    printf("\n\n");
+//      }
+//    }
+
+}
+
+
+
 
 
