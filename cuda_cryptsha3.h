@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-//#include "common.h"
+#include "common.h"
 
 #define uint32_t unsigned int
 #define uint8_t unsigned char

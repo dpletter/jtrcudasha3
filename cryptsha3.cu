@@ -21,19 +21,6 @@ __shared__ uint64_t state[5*5*NT];
 __global__ void testPadding (uint32_t *devInput, uint32_t *devOutput);
 __device__ void padInputWord (uint32_t eval, uint32_t length);
 
-static void HandleError( cudaError_t err,
-    const char *file,
-    int line ) {
-     if (err != cudaSuccess) {
-     printf( "%s in %s at line %d\n", cudaGetErrorString( err ),
-        file, line );
-     exit( EXIT_FAILURE );
-     }
-}
-
-#define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
-
-
 // This is our padding function that pads with binary digits in the pattern 1(0)*1 until the input is 256 bits
 // length is the number of characters in the input string
 __device__ void padInputWord (uint32_t eval, uint32_t length)
@@ -229,28 +216,22 @@ __global__ void keccakEntry (crypt_sha3_password *devInput, crypt_sha3_crack *de
 
 		// Store output.
 		for (int i = 0; i < OW; ++ i) {
-
 			devOutput[sample].hash[i * 4]     = 0xFF & (cryptoState[eval][i] >> 24);
-			// if (!threadIdx.x && !blockIdx.x && !blockIdx.y) 
-			// 	printf("%x",devOutput[sample].hash[i*4]);
-
 			devOutput[sample].hash[i * 4 + 1] = 0xFF & (cryptoState[eval][i] >> 16);
-			// if (!threadIdx.x && !blockIdx.x && !blockIdx.y) 
-			// 	printf("%x",devOutput[sample].hash[i*4+1]);
-
 			devOutput[sample].hash[i * 4 + 2] = 0xFF & (cryptoState[eval][i] >> 8);
-			// if (!threadIdx.x && !blockIdx.x && !blockIdx.y) 
-			// 	printf("%x",devOutput[sample].hash[i*4+2]);
-
 			devOutput[sample].hash[i * 4 + 3] = 0xFF & cryptoState[eval][i];
-			// if (!threadIdx.x && !blockIdx.x && !blockIdx.y) 
-			// 	printf("%x",devOutput[sample].hash[i*4+3]);
-
 		}
-		// if (!threadIdx.x && !blockIdx.x && !blockIdx.y)
-		// 	printf("\n");
 	}
 }
+
+/*
+*	param inBuffer: input buffer of dictionary entries and their length in characters
+*	param outBuffer: output buffer of hashes
+*	param host_salt: This param is unused in this function and can probably be removed if salting is unnecessary
+*	param L:  The number of entries in the dictionary passed into the function through inBuffer
+*
+*
+*/
 
 __host__ void sha3_crypt_gpu (crypt_sha3_password *inBuffer, crypt_sha3_crack *outBuffer, crypt_sha3_salt *host_salt, uint32_t L)
 {
@@ -276,70 +257,3 @@ __host__ void sha3_crypt_gpu (crypt_sha3_password *inBuffer, crypt_sha3_crack *o
 	HANDLE_ERROR(cudaFree(dev_inBuffer));
 	HANDLE_ERROR(cudaFree(dev_outBuffer));
 }
-
-int main (int argc, char *argv[])
-{
-	// Read in the dictionary and pass it to the host function
-	int inBufferSize = 10000;
-	crypt_sha3_password *inBuffer = (crypt_sha3_password*) malloc(sizeof(crypt_sha3_password) * inBufferSize);
-	crypt_sha3_crack *outBuffer;
-	uint32_t L;
-	FILE *fp;
-	struct stat statsBuff;
-	int tempLen = 0, i;
-
-    if (argc != 2) {
-        fprintf(stderr, "Must specify the name of a dictionary file\n");
-        exit(1);
-    }
-
-	if ((fp = fopen(argv[1], "r")) == NULL) {
-		perror("error opening file");
-		exit(1);
-	}
-	if (stat(argv[1], &statsBuff) < 0) {
-		perror("error getting stats");
-		exit(1);
-	}
-
-	for (i = 0; (fgets((char*)inBuffer[i].v, statsBuff.st_size, fp) != NULL); i++) {
-		// If we are about to run over our size then allocate more space
-		if (i == inBufferSize) {
-			inBufferSize += 10000;
-			if ((inBuffer = (crypt_sha3_password*) realloc(inBuffer, sizeof(crypt_sha3_password) * inBufferSize)) == NULL) {
-				perror("unable to allocate more space");
-				exit(1);
-			}
-		}
-
-		tempLen = strlen((char*)inBuffer[i].v);
-		// If the last char is a newline then make it the null byte and subtract one from the length
-		if (inBuffer[i].v[tempLen - 1] == '\n')
-			inBuffer[i].v[--tempLen] = '\0';
-
-		inBuffer[i].length = tempLen;
-	} 
-
-	L = i;
-
-	printf("number of words in dict: %d\n", L);
-	outBuffer = (crypt_sha3_crack*) malloc(sizeof(crypt_sha3_crack) * L);
-
-	sha3_crypt_gpu(inBuffer, outBuffer, NULL, L);
-
-//	for (int j = 0; j < L; j++) {
-//        if (j % 10000 == 0) {
-//	 	    outBuffer[j].hash[OW*4] = '\0';
-//		    printf("Hash number %d: ", j);
-//		    for (int i = 0; i < OW*4; i++)
-//			    printf("%02x", outBuffer[j].hash[i]);
-//		    printf("\n\n");
-//      }
-//    }
-
-}
-
-
-
-
-
