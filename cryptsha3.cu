@@ -6,6 +6,7 @@
 
 //All the macros and constants
 #include "../cuda_cryptsha3.h"
+#include "cuda_common.cuh"
 
 /**
  * cryptoState stores all of the input words, padded using the padding function

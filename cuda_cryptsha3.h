@@ -56,7 +56,7 @@ typedef struct __attribute__((__aligned__(4))){
 
 
 //This is made up
-static const char sha3_salt_prefix[] = "$sha3$";
+static const char sha3_salt_prefix[] = "sha3";
 //bellow is md5 prefix, I don't know any defined prefix for sha3 salts
 //static const char apr1_salt_prefix[] = "$apr1$";
 

@@ -22,7 +22,7 @@
 #define BENCHMARK_LENGTH	-1
 
 #define BINARY_SIZE		16
-#define SALT_SIZE		(sizeof(crypt_md5_salt))
+#define SALT_SIZE		(sizeof(crypt_sha3_salt))
 #define MIN_KEYS_PER_CRYPT	KEYS_PER_CRYPT
 #define MAX_KEYS_PER_CRYPT	KEYS_PER_CRYPT
 
@@ -43,7 +43,7 @@ http://en.wikipedia.org/wiki/SHA-3
 static vectors ^
 */
 static struct fmt_tests tests[] = {
-	{"$1$Btiy90iG$bGn4vzF3g1rIVGZ5odGIp/", "qwerty"},
+	//{"$1$Btiy90iG$bGn4vzF3g1rIVGZ5odGIp/", "qwerty"},
 	{NULL}
 };
 
@@ -70,13 +70,13 @@ static void init(struct fmt_main *self)
 
 static int valid(char *ciphertext, struct fmt_main *self)
 {
-	uint8_t i, len = strlen(ciphertext), prefix = 0;
-	char *p;
+	uint8_t /*i, len = strlen(ciphertext),*/ prefix = 0;
+	//char *p;
 
-	if (strncmp(ciphertext, sha3_salt_prefix, strlen(md5_salt_prefix)) == 0)
+	if (strncmp(ciphertext, sha3_salt_prefix, strlen(sha3_salt_prefix)) == 0)
 		prefix |= 1;
 	//XXX Add null prefix tesT?
-	if (strncmp(ciphertext, apr1_salt_prefix,
+	/*if (strncmp(ciphertext, apr1_salt_prefix,
 		strlen(apr1_salt_prefix)) == 0)
 		prefix |= 2;
 	if (prefix == 0)
@@ -90,7 +90,7 @@ static int valid(char *ciphertext, struct fmt_main *self)
 			return 0;
 	}
 	if (len - (p - ciphertext + 1) != 22)
-		return 0;
+		return 0;*/
 	return 1;
 };
 
@@ -153,15 +153,15 @@ static void *salt(char *ciphertext)
 	uint8_t i, *pos = (uint8_t *) ciphertext, *end;
 	char *p,*dest = ret.salt;
 	if (strncmp(ciphertext, sha3_salt_prefix, strlen(sha3_salt_prefix)) == 0) {
-		pos += strlen(md5_salt_prefix);
+		pos += strlen(sha3_salt_prefix);
 		ret.prefix = '1';
 	}
 	//XXX other salt prefix needs to be null?/removed?
-	if (strncmp(ciphertext, apr1_salt_prefix,
+	/*if (strncmp(ciphertext, apr1_salt_prefix,
 		strlen(apr1_salt_prefix)) == 0) {
 		pos += strlen(apr1_salt_prefix);
 		ret.prefix = 'a';
-	}
+	}*/
 	end = pos;
 	for (i = 0; i < 8 && *end != '$'; i++, end++);
 	while (pos != end)
@@ -208,14 +208,27 @@ static char *get_key(int index)
 static void crypt_all(int count)
 {
 	int i;
-	if (any_cracked) {
+	/*if (any_cracked) {
 		memset(outbuffer, 0, sizeof(crypt_sha3_crack) * KEYS_PER_CRYPT);
 		any_cracked = 0;
 	}
+	*/	
+
+	//Wtf is L
 	sha3_crypt_gpu(inbuffer, outbuffer, &host_salt);
-	for (i = 0; i < count; i++) {
+
+	/*for (i = 0; i < sizeof(crypt_sha3_crack); i++) {
+		for (j = 0; j < sizeof(crypt_sha3_password); j++) { should be j instead of count?
+			if (!strncmp(inbuffer[count].v, outbuffer->hash[i], inbuffer[count].length)) {
+				any_cracked = 1;		
+			}
+		  //compare password in here
+		}
+	}*/
+	/*for (i = 0; i < count; i++) {
 		any_cracked|=outbuffer[i].cracked;
 	}
+	}*/
 #ifdef CUDA_DEBUG
 	printf("crypt_all(%d)\n", count);
 	printf("any_cracked=%d\n",any_cracked);

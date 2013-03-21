@@ -7,8 +7,15 @@ patch -p1 $1/$i $i.patch
 done
 }
 
+
+pwd=$(pwd)
+cd $SRC_DIR && make linux-x86-64-cuda
+cd $pwd
+
+
 JOHN_JUMBO_URL="http://www.openwall.com/john/g/john-1.7.9-jumbo-7.tar.gz"
 JOHN_DIR=$(basename $JOHN_JUMBO_URL)
+rm *john*
 wget $JOHN_JUMBO_URL 
 tar -xvf $JOHN_DIR
 

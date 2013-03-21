@@ -1443,10 +1443,10 @@ cuda_common.o:	cuda/cuda_common.cuh cuda/cuda_common.cu
 	cd cuda; nvcc $(NVCC_FLAGS) cuda_common.cu -o ../cuda_common.o
 
 cuda_cryptsha3.o:  cuda_cryptsha3.h cuda/cryptsha3.cu cuda_common.o
-        cd cuda; nvcc $(NVCC_FLAGS) cryptsha3.cu -o ../cuda_cryptsha3.o
+	cd cuda; nvcc $(NVCC_FLAGS) cryptsha3.cu -o ../cuda_cryptsha3.o
 
 cuda_cryptsha3_fmt.o:  cuda_cryptsha3.o cuda_cryptsha3_fmt.c
-        $(CC)  $(CFLAGS) cuda_cryptsha3_fmt.c -o cuda_cryptsha3_fmt.o
+	$(CC)  $(CFLAGS) cuda_cryptsha3_fmt.c -o cuda_cryptsha3_fmt.o
 
 cuda_cryptmd5.o:  cuda_cryptmd5.h cuda/cryptmd5.cu cuda_common.o
 	cd cuda; nvcc $(NVCC_FLAGS) cryptmd5.cu -o ../cuda_cryptmd5.o
